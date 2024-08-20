@@ -1,5 +1,5 @@
 
-**ENGLISH :**
+**__ENGLISH :__**
 
 - Copy this “Bookmarks_Restore” folder to your personal network drive.
 - Then store your .url shortcuts in it (see explanation below).
@@ -16,7 +16,7 @@ Here are 3 ways to generate your .url shortcuts, from within the browser:
 =========================================================================
 
 
-**FRANCAIS :**
+**__FRANCAIS :__**
 
 - Copiez ce dossier "Bookmarks_Restore" dans votre lecteur réseau personnel.
 - Puis stockez vos raccourcis .url dedans (explication en bas).
