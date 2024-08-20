@@ -7,10 +7,10 @@
 - When your favorites are missing in Edge, open "_Restore_Bookmarks.bat".
 
 
-Here are 3 ways to generate your .url shortcuts, from within the browser:
+Here are 3 ways to generate your .url shortcuts :
 - Open “_Backup_Current_Bookmarks.bat” to automatically generate URL shortcuts from your current Edge/Chrome bookmarks bar.
-- Drag an existing favorite into your “Bookmarks_Restore” folder.
-- Drag the padlock icon (to the left of the address bar) into your “Bookmarks_Restore” folder.
+- Drag an existing favorite from browser into your “Bookmarks_Restore” folder.
+- Drag the padlock icon from a website (to the left of the address bar) into your “Bookmarks_Restore” folder.
 
 
 =========================================================================
@@ -24,7 +24,7 @@ Here are 3 ways to generate your .url shortcuts, from within the browser:
 - Lorsque vos favoris sont manquants dans Edge, ouvrez "_Restore_Bookmarks.bat".
 
 
-Voici 3 manières de générer vos raccourcis .url, depuis le navigateur :
+Voici 3 manières de générer vos raccourcis .url :
 - Ouvrir "_Backup_Current_Bookmarks.bat" pour générer automatiquement des raccourcis URL à partir de votre barre de favoris Edge/Chrome actuelle.
-- Faire glisser un favori existant dans votre dossier "Bookmarks_Restore".
+- Faire glisser un favori existant depuis le navigateur vers votre dossier "Bookmarks_Restore".
 - Faire glisser l'icone du cadenas lorsque vous êtes sur un site (à gauche de la barre d'adresse) dans votre dossier "Bookmarks_Restore".
