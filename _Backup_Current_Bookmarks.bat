@@ -6,7 +6,7 @@
     if "%debug%"=="true" (set "style=Normal") else (set "style=Hidden")
     powershell /nologo /noprofile /executionpolicy bypass /WindowStyle %style% /command ^
         "&{[ScriptBlock]::Create((gc """%~f0""" -Raw)).Invoke(@(&{$args}%*))}" 
-    if "debug"=="true" (pause) else (exit)
+    if "%debug%"=="true" (pause) else (exit)
 #>
 $OutputEncoding = [System.Text.Encoding]::UTF8
 Add-Type -AssemblyName System.Windows.Forms
