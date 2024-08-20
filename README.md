@@ -1,7 +1,7 @@
 
 **ENGLISH :**
 
-- Copy this “Bookmarks_Restore” folder to your personal network drive.
+- Copy this “Bookmarks_Restore” folder to a network drive for example.
 - Then store your .url shortcuts in it (see explanation below).
 - You can also create sub-folders and put .url shortcuts in them, and you'll find the same tree structure in Edge.
 - When your favorites are missing in Edge, open "_Restore_Bookmarks.bat".
@@ -18,7 +18,7 @@ Here are 3 ways to generate your .url shortcuts :
 
 **FRANCAIS :**
 
-- Copiez ce dossier "Bookmarks_Restore" dans votre lecteur réseau personnel.
+- Copiez ce dossier "Bookmarks_Restore" dans un lecteur réseau par exemple.
 - Puis stockez vos raccourcis .url dedans (explication en bas).
 - Vous pouvez aussi créer des sous-dossiers et mettre des raccourcis .url dedans, vous retrouverez la même arborescence dans Edge.
 - Lorsque vos favoris sont manquants dans Edge, ouvrez "_Restore_Bookmarks.bat".
