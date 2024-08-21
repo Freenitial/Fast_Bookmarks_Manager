@@ -1,6 +1,5 @@
 <# :
     @echo off & chcp 65001 >nul & cd /d "%~dp0" & Title Edge Favorites
-    if not DEFINED IS_MINIMIZED set IS_MINIMIZED=1 && start "" /min "%~f0" %* && exit
     powershell /nologo /noprofile /executionpolicy bypass /windowstyle Hidden /command ^
         "&{[ScriptBlock]::Create((gc """%~f0""" -Raw)).Invoke(@(&{$args}%*))}" & exit
 #>
