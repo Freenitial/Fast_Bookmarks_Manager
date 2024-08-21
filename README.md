@@ -28,3 +28,15 @@ Voici 3 manières de générer vos raccourcis .url :
 - Ouvrir "_Backup_Current_Bookmarks.bat" pour générer automatiquement des raccourcis URL à partir de votre barre de favoris Edge/Chrome actuelle.
 - Faire glisser un favori existant depuis le navigateur vers votre dossier "Bookmarks_Restore".
 - Faire glisser l'icone du cadenas lorsque vous êtes sur un site (à gauche de la barre d'adresse) dans votre dossier "Bookmarks_Restore".
+
+
+
+
+
+------
+TODO : 
+- Restore depth (compress ?)
+- Restore destroy unicode of existing
+- Choose profile to restore in
+- Backup selected count not reliable when confirming
+- Check backup with custom profiles
