@@ -205,8 +205,8 @@ function Show-BookmarksTable {
 
     # Create TreeView to display bookmarks structure
     $treeView = New-Object System.Windows.Forms.TreeView
-    $treeView.Location = New-Object System.Drawing.Point(10, 60)
-    $treeView.Size = New-Object System.Drawing.Size(760, 490)
+    $treeView.Location = New-Object System.Drawing.Point(10, 50)
+    $treeView.Size = New-Object System.Drawing.Size(540, 375)
     $treeView.CheckBoxes = $true
 
     function Add-BookmarksToTreeNode {
