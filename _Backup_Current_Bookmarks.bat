@@ -1,7 +1,7 @@
 <# :
     @echo off & chcp 65001 >nul & cd /d "%~dp0" & Title Browser Bookmarks Export
 
-    set "debug=true"
+    set "debug=false"
 
     if "%debug%"=="true" (set "style=Normal") else (set "style=Hidden")
     powershell /nologo /noprofile /executionpolicy bypass /WindowStyle %style% /command ^
@@ -181,16 +181,16 @@ function Show-BookmarksTable {
     # Create main form
     $form = New-Object System.Windows.Forms.Form
     $form.Text = "Bookmarks - $browser ($profile)"
-    $form.Size = New-Object System.Drawing.Size(800, 600)
+    $form.Size = New-Object System.Drawing.Size(575, 475)
     $form.StartPosition = "CenterScreen"
     $form.Font = New-Object System.Drawing.Font("Arial", 10)
 
     # Add OK button
     $okButton = New-Object System.Windows.Forms.Button
-    $okButton.Text = "OK"
+    $okButton.Text = "CONFIRM  SELECTION"
     $okButton.Font = New-Object System.Drawing.Font("Arial", 12, [System.Drawing.FontStyle]::Bold)
-    $okButton.Size = New-Object System.Drawing.Size(100, 40)
-    $okButton.Location = New-Object System.Drawing.Point(350, 10)
+    $okButton.Size = New-Object System.Drawing.Size(539, 40)
+    $okButton.Location = New-Object System.Drawing.Point(10, 5)
     $okButton.Add_Click({
         $selectedResult = Get-CheckedNodes $treeView.Nodes
         $selectedNodes = $selectedResult.Children
