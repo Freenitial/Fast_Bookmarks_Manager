@@ -256,6 +256,7 @@ function Show-ProgressBar($title, $max) {
     $progressBar.Minimum = 0
     $progressBar.Maximum = $max
     $progressBar.Value = 0
+    $progressBar.Style = [System.Windows.Forms.ProgressBarStyle]::Continuous
 
     $progressForm.Controls.Add($progressBar)
 
@@ -270,72 +271,149 @@ function Show-ProgressBar($title, $max) {
 function Export-Bookmarks($web_profiles) {
     $script_folder = (Get-Location).Path
     
-    $totalProfiles = $web_profiles.Count
-    $progress = Show-ProgressBar "Exporting Bookmarks" $totalProfiles
+    $totalBookmarks = 0
+    $web_profiles | ForEach-Object {
+        $browser = $_.Browser
+        $web_profileName = $_.Profile
+        $bookmarks_file = if ($browser -eq "Chrome") {
+            "$env:LOCALAPPDATA\Google\Chrome\User Data\$web_profileName\Bookmarks"
+        } else {
+            "$env:LOCALAPPDATA\Microsoft\Edge\User Data\$web_profileName\Bookmarks"
+        }
+        if (Test-Path $bookmarks_file) {
+            $bookmarks_data = Get-Content -Path $bookmarks_file -Raw | ConvertFrom-Json
+            $totalBookmarks += (Count-Bookmarks-Recursive $bookmarks_data.roots.bookmark_bar)
+        }
+    }
 
-    for ($i = 0; $i -lt $totalProfiles; $i++) {
-        $web_profile = $web_profiles[$i]
+    $progress = Show-ProgressBar "Exporting Bookmarks" $totalBookmarks
+    $currentBookmark = 0
+
+    foreach ($web_profile in $web_profiles) {
         $browser = $web_profile.Browser
         $web_profileName = $web_profile.Profile
 
-        if ($browser -eq "Chrome") {
-            $bookmarks_file = "$env:LOCALAPPDATA\Google\Chrome\User Data\$web_profileName\Bookmarks"
+        $bookmarks_file = if ($browser -eq "Chrome") {
+            "$env:LOCALAPPDATA\Google\Chrome\User Data\$web_profileName\Bookmarks"
         } else {
-            $bookmarks_file = "$env:LOCALAPPDATA\Microsoft\Edge\User Data\$web_profileName\Bookmarks"
+            "$env:LOCALAPPDATA\Microsoft\Edge\User Data\$web_profileName\Bookmarks"
         }
         
         if (Test-Path $bookmarks_file) {
             $bookmarks_data = Get-Content -Path $bookmarks_file -Raw | ConvertFrom-Json
-            Process-Bookmarks $bookmarks_data.roots.bookmark_bar $script_folder
+            Process-Bookmarks $bookmarks_data.roots.bookmark_bar $script_folder ([ref]$currentBookmark) $progress
         } else {
             Write-Host "Bookmarks file not found: $bookmarks_file"
         }
-
-        $progress.Bar.Value = $i + 1
-        $progress.Form.Refresh()
     }
 
     $progress.Form.Close()
     [System.Windows.Forms.MessageBox]::Show("Bookmarks have been exported successfully.", "Export Complete", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
 }
 
+
+function Count-Bookmarks-Recursive($node) {
+    $count = 0
+    if ($node.type -eq 'url') {
+        $count++
+    }
+    if ($node.children) {
+        foreach ($child in $node.children) {
+            $count += Count-Bookmarks-Recursive $child
+        }
+    }
+    return $count
+}
+
+
+
 # Function to create .url file
 function Create-UrlFile($name, $url, $path) {
+    # Ignorer les URLs qui commencent par chrome:// ou edge://
+    if ($url -match '^(chrome|edge)://') {
+        Write-Host "Skipping browser-specific URL: $url"
+        return
+    }
+
     $content = @"
 [InternetShortcut]
 URL=$url
 "@
-    $filePath = Join-Path -Path $path -ChildPath "$name.url"
-    $content | Out-File -FilePath $filePath -Encoding ascii
-    Write-Host "Created URL file: $filePath"
+    
+    # Fonction pour créer un nom de fichier valide
+    function Get-ValidFileName($fileName, $url) {
+        # Si le nom ressemble à une URL, retirer les préfixes
+        if ($fileName -match '^(https?://)?(www\.)?') {
+            $fileName = $fileName -replace '^(https?://)?(www\.)?', ''
+        }
+
+        # Remplacer les caractères non-alphanumériques (sauf les espaces, @, et apostrophes) par des underscores
+        $validName = $fileName -replace '[^\p{L}\p{Nd}\s@''._-]', '_'
+        
+        # Supprimer les caractères de contrôle
+        $validName = $validName -replace '[\x00-\x1F]', ''
+        
+        # Supprimer les espaces, points, underscores et tirets au début et à la fin
+        $validName = $validName.Trim(' ._-')
+        
+        # Si le nom est vide ou ne contient que des caractères spéciaux, utiliser l'URL
+        if ([string]::IsNullOrWhiteSpace($validName) -or $validName -match '^[\s._-]+$') {
+            $validName = $url -replace '^(https?://)?(www\.)?', '' -replace '[^\p{L}\p{Nd}\s@''._-]', '_'
+            $validName = $validName.Trim(' ._-')
+        }
+        
+        # S'assurer que le nom n'est toujours pas vide
+        if ([string]::IsNullOrWhiteSpace($validName)) {
+            $validName = "Unnamed_Bookmark"
+        }
+        
+        return $validName
+    }
+    
+    $validName = Get-ValidFileName $name $url
+    
+    # Remplacer les underscores multiples par un seul underscore
+    $validName = $validName -replace '_+', '_'
+    
+    # Limiter la longueur du nom à 40 caractères
+    if ($validName.Length -gt 40) {
+        $validName = $validName.Substring(0, 40).TrimEnd(' ._-')
+    }
+    
+    $filePath = Join-Path -Path $path -ChildPath "$validName.url"
+    
+    try {
+        $content | Out-File -FilePath $filePath -Encoding utf8 -Force -ErrorAction Stop
+        Write-Host "Created/Overwritten URL file: $filePath"
+    }
+    catch {
+        Write-Host "Failed to create/overwrite URL file: $filePath. Error: $($_.Exception.Message)"
+    }
 }
 
 
 # Recursive function to process bookmarks and create folders/files
-function Process-Bookmarks($node, $currentPath) {
-    Write-Host "Processing node: $($node.name)"
-    Write-Host "Current path: $currentPath"
-    
+function Process-Bookmarks($node, $currentPath, [ref]$currentBookmark, $progress) {
     if ($node.children) {
-        Write-Host "Node has $($node.children.Count) children"
         foreach ($child in $node.children) {
             if ($child.type -eq 'folder') {
                 $folderPath = Join-Path -Path $currentPath -ChildPath $child.name
-                Write-Host "Creating folder: $folderPath"
                 if (-not (Test-Path $folderPath)) {
                     New-Item -Path $folderPath -ItemType Directory | Out-Null
                 }
-                Process-Bookmarks $child $folderPath
+                Process-Bookmarks $child $folderPath $currentBookmark $progress
             } elseif ($child.type -eq 'url') {
-                Write-Host "Creating URL file: $($child.name)"
                 Create-UrlFile $child.name $child.url $currentPath
+                $currentBookmark.Value++
+                $progress.Bar.Value = $currentBookmark.Value
+                $progress.Form.Refresh()
             }
         }
     } elseif ($node.type -eq 'url') {
-        Write-Host "Creating URL file: $($node.name)"
         Create-UrlFile $node.name $node.url $currentPath
-    } else {
-        Write-Host "Node has no children and is not a URL"
+        $currentBookmark.Value++
+        $progress.Bar.Value = $currentBookmark.Value
+        $progress.Form.Refresh()
     }
 }
 
