@@ -175,21 +175,19 @@ function Show-BookmarksTable {
     $dataGridView.Dock = "Fill"
     $dataGridView.DataSource = $dataTable
     $dataGridView.AutoSizeColumnsMode = "Fill"
-    $dataGridView.RowHeadersVisible = $false  # Cache la colonne de sélection (la flèche)
-    $dataGridView.AllowUserToAddRows = $false  # Empêche l'ajout de lignes par l'utilisateur (supprime la ligne vide)
-    $dataGridView.ReadOnly = $true  # Rend le tableau en lecture seule
-    $dataGridView.ColumnHeadersHeightSizeMode = 'DisableResizing'  # Empêche le redimensionnement des en-têtes de colonne
-    $dataGridView.RowHeadersWidthSizeMode = 'DisableResizing'  # Empêche le redimensionnement des en-têtes de ligne
-    $dataGridView.AllowUserToResizeRows = $false  # Désactive le redimensionnement des lignes
-    $dataGridView.MultiSelect = $false  # Désactive la sélection multiple
-    $dataGridView.SelectionMode = 'CellSelect'  # Change le mode de sélection à la sélection de cellule
+    $dataGridView.RowHeadersVisible = $false
+    $dataGridView.AllowUserToAddRows = $false
+    $dataGridView.ReadOnly = $true
+    $dataGridView.ColumnHeadersHeightSizeMode = 'DisableResizing'
+    $dataGridView.RowHeadersWidthSizeMode = 'DisableResizing'
+    $dataGridView.AllowUserToResizeRows = $false
+    $dataGridView.MultiSelect = $false
+    $dataGridView.SelectionMode = 'CellSelect'
 
-    # Désélectionner la cellule après l'affichage initial du formulaire
     $form.Add_Shown({
         $dataGridView.ClearSelection()
     })
 
-    # Ajoutez l'événement CellClick pour désélectionner immédiatement une cellule si elle est cliquée
     $dataGridView.Add_CellClick({
         param ($sender, $e)
         $sender.ClearSelection()
