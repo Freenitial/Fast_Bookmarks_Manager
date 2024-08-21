@@ -1,7 +1,7 @@
 <# :
     @echo off & chcp 65001 >nul & cd /d "%~dp0" & Title Browser Bookmarks Export
 
-    set "debug=false"
+    set "debug=true"
 
     if "%debug%"=="true" (set "style=Normal") else (set "style=Hidden")
     powershell /nologo /noprofile /executionpolicy bypass /WindowStyle %style% /command ^
@@ -13,6 +13,7 @@ $OutputEncoding = [System.Text.Encoding]::UTF8
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 Add-Type -AssemblyName System.Web
+$global:SelectedBookmarks = @{}
 
 # Function to get Chrome profiles
 function Get-ChromeProfiles
@@ -100,21 +101,27 @@ function Create-ProfileCheckboxes($group, $web_profiles, $browser) {
             
             if (Test-Path $bookmarksFile) {
                 $bookmarkCount = Count-Bookmarks $bookmarksFile
+                $selectedCount = 0
+                $key = "$browser|$web_profile"
+                if ($global:SelectedBookmarks.ContainsKey($key)) {
+                    $selectedCount = ($global:SelectedBookmarks[$key] | Where-Object { $_ -ne $null }).Count
+                }
                 if ($bookmarkCount -eq 0) {
                     $checkbox.Enabled = $false
                     $checkbox.Text += " (No bookmarks)"
                 } else {
-                    $checkbox.Text += " ($bookmarkCount)"
+                    $checkbox.Text += " ($bookmarkCount / $bookmarkCount)"
+                    $global:SelectedBookmarks[$key] = Get-AllBookmarks $bookmarksFile
                     
                     # Add View button
                     $viewButton = New-Object System.Windows.Forms.Button
                     $viewButton.Location = New-Object System.Drawing.Point(200, $yPos)
                     $viewButton.Size = New-Object System.Drawing.Size(50, 20)
                     $viewButton.Text = "View"
-                    $viewButton.Tag = @{Browser = $browser; Profile = $web_profile; BookmarksFile = $bookmarksFile}
+                    $viewButton.Tag = @{Browser = $browser; Profile = $web_profile; BookmarksFile = $bookmarksFile; Checkbox = $checkbox}
                     $viewButton.Add_Click({
                         $buttonTag = $this.Tag
-                        Show-BookmarksTable $buttonTag.Browser $buttonTag.Profile $buttonTag.BookmarksFile
+                        Show-BookmarksTable $buttonTag.Browser $buttonTag.Profile $buttonTag.BookmarksFile $buttonTag.Checkbox
                     })
                     $group.Controls.Add($viewButton)
                 }
@@ -131,11 +138,37 @@ function Create-ProfileCheckboxes($group, $web_profiles, $browser) {
     return $checkboxes
 }
 
+function Get-AllBookmarks($bookmarksFile) {
+    $bookmarks = Get-Content -Path $bookmarksFile -Raw -Encoding utf8 | ConvertFrom-Json
+    
+    function Get-BookmarksRecursive($nodes) {
+        $result = @()
+        foreach ($node in $nodes) {
+            if ($node.type -eq 'url') {
+                $result += @{Text = $node.name; Tag = $node.url; Type = "Bookmark"}
+            } elseif ($node.children) {
+                $childrenResult = Get-BookmarksRecursive $node.children
+                if ($childrenResult.Count -gt 0) {
+                    $result += @{
+                        Text = $node.name
+                        Type = "Folder"
+                        Children = $childrenResult
+                    }
+                }
+            }
+        }
+        return $result
+    }
+    
+    return Get-BookmarksRecursive $bookmarks.roots.bookmark_bar.children
+}
+
 function Show-BookmarksTable {
     param (
         [string]$browser,
         [string]$profile,
-        [string]$bookmarksFile
+        [string]$bookmarksFile,
+        [System.Windows.Forms.CheckBox]$checkbox
     )
 
     if (-not (Test-Path $bookmarksFile)) {
@@ -145,57 +178,105 @@ function Show-BookmarksTable {
 
     $bookmarks = Get-Content -Path $bookmarksFile -Raw -Encoding utf8 | ConvertFrom-Json
     
-    $dataTable = New-Object System.Data.DataTable
-    $dataTable.Columns.Add("Name") | Out-Null
-    $dataTable.Columns.Add("URL") | Out-Null
-
-    function Add-BookmarksToTable($node) {
-        if ($node.type -eq 'url') {
-            $row = $dataTable.NewRow()
-            $row["Name"] = [System.Web.HttpUtility]::HtmlDecode($node.name)
-            $row["URL"] = $node.url
-            $dataTable.Rows.Add($row)
-        }
-        if ($node.children) {
-            foreach ($child in $node.children) {
-                Add-BookmarksToTable $child
-            }
-        }
-    }
-
-    Add-BookmarksToTable $bookmarks.roots.bookmark_bar
-
-    # Create and show the DataGridView form
+    # Create main form
     $form = New-Object System.Windows.Forms.Form
     $form.Text = "Bookmarks - $browser ($profile)"
     $form.Size = New-Object System.Drawing.Size(800, 600)
     $form.StartPosition = "CenterScreen"
     $form.Font = New-Object System.Drawing.Font("Arial", 10)
 
-    $dataGridView = New-Object System.Windows.Forms.DataGridView
-    $dataGridView.Dock = "Fill"
-    $dataGridView.DataSource = $dataTable
-    $dataGridView.AutoSizeColumnsMode = "Fill"
-    $dataGridView.RowHeadersVisible = $false
-    $dataGridView.AllowUserToAddRows = $false
-    $dataGridView.ReadOnly = $true
-    $dataGridView.ColumnHeadersHeightSizeMode = 'DisableResizing'
-    $dataGridView.RowHeadersWidthSizeMode = 'DisableResizing'
-    $dataGridView.AllowUserToResizeRows = $false
-    $dataGridView.MultiSelect = $false
-    $dataGridView.SelectionMode = 'CellSelect'
-
-    $form.Add_Shown({
-        $dataGridView.ClearSelection()
+    # Add OK button
+    $okButton = New-Object System.Windows.Forms.Button
+    $okButton.Text = "OK"
+    $okButton.Font = New-Object System.Drawing.Font("Arial", 12, [System.Drawing.FontStyle]::Bold)
+    $okButton.Size = New-Object System.Drawing.Size(100, 40)
+    $okButton.Location = New-Object System.Drawing.Point(350, 10)
+    $okButton.Add_Click({
+        $selectedResult = Get-CheckedNodes $treeView.Nodes
+        $selectedNodes = $selectedResult.Children
+        $selectedCount = $selectedResult.BookmarkCount
+        $key = "$browser|$profile"
+        $global:SelectedBookmarks[$key] = $selectedNodes
+        $totalCount = Count-Bookmarks $bookmarksFile
+        $checkbox.Text = "$profile ($selectedCount / $totalCount)"
+        $form.Close()
     })
+    $form.Controls.Add($okButton)
 
-    $dataGridView.Add_CellClick({
+    # Create TreeView to display bookmarks structure
+    $treeView = New-Object System.Windows.Forms.TreeView
+    $treeView.Location = New-Object System.Drawing.Point(10, 60)
+    $treeView.Size = New-Object System.Drawing.Size(760, 490)
+    $treeView.CheckBoxes = $true
+
+    function Add-BookmarksToTreeNode {
+        param ($node, $parentTreeNode)
+
+        if ($node.type -eq 'url') {
+            $newNode = $parentTreeNode.Nodes.Add([System.Web.HttpUtility]::HtmlDecode($node.name))
+            $newNode.Tag = $node.url
+            $newNode.Checked = $true
+        }
+
+        if ($node.children) {
+            $newFolderNode = $parentTreeNode.Nodes.Add($node.name)
+            foreach ($child in $node.children) {
+                Add-BookmarksToTreeNode $child $newFolderNode
+            }
+            $newFolderNode.Checked = $true
+        }
+    }
+
+    $bookmarkBarChildren = $bookmarks.roots.bookmark_bar.children
+    foreach ($child in $bookmarkBarChildren) {
+        Add-BookmarksToTreeNode $child $treeView
+    }
+    $treeView.Nodes | ForEach-Object { $_.Checked = $true }
+    $treeView.CollapseAll()
+
+    # Attach event handler for checking/unchecking nodes
+    $treeView.Add_AfterCheck({
         param ($sender, $e)
-        $sender.ClearSelection()
+        # Propagate check state to children
+        foreach ($childNode in $e.Node.Nodes) {
+            $childNode.Checked = $e.Node.Checked
+        }
     })
 
-    $form.Controls.Add($dataGridView)
+    $form.Controls.Add($treeView)
     $form.ShowDialog()
+}
+
+
+function Get-CheckedNodes($nodes) {
+    $checkedNodes = @()
+    $bookmarkCount = 0
+
+    foreach ($node in $nodes) {
+        if ($node.Checked) {
+            if ($node.Nodes.Count -eq 0) {
+                # This is a bookmark
+                $checkedNodes += @{Text = $node.Text; Tag = $node.Tag; Type = "Bookmark"}
+                $bookmarkCount++
+            } else {
+                # This is a folder
+                $folderResult = Get-CheckedNodes $node.Nodes
+                if ($folderResult.Children.Count -gt 0) {
+                    $checkedNodes += @{
+                        Text = $node.Text
+                        Type = "Folder"
+                        Children = $folderResult.Children
+                    }
+                    $bookmarkCount += $folderResult.BookmarkCount
+                }
+            }
+        }
+    }
+
+    return @{
+        Children = $checkedNodes
+        BookmarkCount = $bookmarkCount
+    }
 }
 
 
@@ -253,10 +334,12 @@ function Show-ProgressBar($title, $max) {
     $progressBar = New-Object System.Windows.Forms.ProgressBar
     $progressBar.Location = New-Object System.Drawing.Point(10, 20)
     $progressBar.Size = New-Object System.Drawing.Size(260, 20)
-    $progressBar.Minimum = 0
-    $progressBar.Maximum = $max
-    $progressBar.Value = 0
     $progressBar.Style = [System.Windows.Forms.ProgressBarStyle]::Continuous
+
+    # Assurez-vous que Maximum est au moins 1
+    $progressBar.Minimum = 0
+    $progressBar.Maximum = [Math]::Max(1, $max)
+    $progressBar.Value = 0
 
     $progressForm.Controls.Add($progressBar)
 
@@ -270,40 +353,41 @@ function Show-ProgressBar($title, $max) {
 # Function to export Bookmarks
 function Export-Bookmarks($web_profiles) {
     $script_folder = (Get-Location).Path
+    Write-Host "Debug: Script folder is $script_folder"
     
     $totalBookmarks = 0
     $web_profiles | ForEach-Object {
         $browser = $_.Browser
         $web_profileName = $_.Profile
-        $bookmarks_file = if ($browser -eq "Chrome") {
-            "$env:LOCALAPPDATA\Google\Chrome\User Data\$web_profileName\Bookmarks"
+        $key = "$browser|$web_profileName"
+        Write-Host "Debug: Checking key $key"
+        if ($global:SelectedBookmarks.ContainsKey($key)) {
+            $count = Count-Bookmarks-Recursive $global:SelectedBookmarks[$key]
+            $totalBookmarks += $count
+            Write-Host "Debug: Found $count bookmarks for $key"
         } else {
-            "$env:LOCALAPPDATA\Microsoft\Edge\User Data\$web_profileName\Bookmarks"
-        }
-        if (Test-Path $bookmarks_file) {
-            $bookmarks_data = Get-Content -Path $bookmarks_file -Raw | ConvertFrom-Json
-            $totalBookmarks += (Count-Bookmarks-Recursive $bookmarks_data.roots.bookmark_bar)
+            Write-Host "Debug: No bookmarks found for $key"
         }
     }
 
+    Write-Host "Debug: Total bookmarks to export: $totalBookmarks"
+
+    $totalBookmarks = [Math]::Max(1, $totalBookmarks)
     $progress = Show-ProgressBar "Exporting Bookmarks" $totalBookmarks
     $currentBookmark = 0
 
     foreach ($web_profile in $web_profiles) {
         $browser = $web_profile.Browser
         $web_profileName = $web_profile.Profile
+        $key = "$browser|$web_profileName"
 
-        $bookmarks_file = if ($browser -eq "Chrome") {
-            "$env:LOCALAPPDATA\Google\Chrome\User Data\$web_profileName\Bookmarks"
+        Write-Host "Debug: Processing $browser profile: $web_profileName"
+        if ($global:SelectedBookmarks.ContainsKey($key)) {
+            $selectedNodes = $global:SelectedBookmarks[$key]
+            Write-Host "Debug: Found $(Count-Bookmarks-Recursive $selectedNodes) selected nodes for $key"
+            Process-SelectedBookmarks $selectedNodes $script_folder ([ref]$currentBookmark) $progress
         } else {
-            "$env:LOCALAPPDATA\Microsoft\Edge\User Data\$web_profileName\Bookmarks"
-        }
-        
-        if (Test-Path $bookmarks_file) {
-            $bookmarks_data = Get-Content -Path $bookmarks_file -Raw | ConvertFrom-Json
-            Process-Bookmarks $bookmarks_data.roots.bookmark_bar $script_folder ([ref]$currentBookmark) $progress
-        } else {
-            Write-Host "Bookmarks file not found: $bookmarks_file"
+            Write-Host "Debug: No bookmarks selected for $browser profile: $web_profileName"
         }
     }
 
@@ -312,14 +396,13 @@ function Export-Bookmarks($web_profiles) {
 }
 
 
-function Count-Bookmarks-Recursive($node) {
+function Count-Bookmarks-Recursive($nodes) {
     $count = 0
-    if ($node.type -eq 'url') {
-        $count++
-    }
-    if ($node.children) {
-        foreach ($child in $node.children) {
-            $count += Count-Bookmarks-Recursive $child
+    foreach ($node in $nodes) {
+        if ($node.Type -eq "Bookmark") {
+            $count++
+        } elseif ($node.Type -eq "Folder") {
+            $count += Count-Bookmarks-Recursive $node.Children
         }
     }
     return $count
@@ -329,7 +412,6 @@ function Count-Bookmarks-Recursive($node) {
 
 # Function to create .url file
 function Create-UrlFile($name, $url, $path) {
-    # Ignorer les URLs qui commencent par chrome:// ou edge://
     if ($url -match '^(chrome|edge)://') {
         Write-Host "Skipping browser-specific URL: $url"
         return
@@ -339,49 +421,28 @@ function Create-UrlFile($name, $url, $path) {
 [InternetShortcut]
 URL=$url
 "@
-    
-    # Fonction pour créer un nom de fichier valide
     function Get-ValidFileName($fileName, $url) {
-        # Si le nom ressemble à une URL, retirer les préfixes
-        if ($fileName -match '^(https?://)?(www\.)?') {
-            $fileName = $fileName -replace '^(https?://)?(www\.)?', ''
+        if ($fileName -match '^(https?://)?(www\.)?') { 
+            $fileName = $fileName -replace '^(https?://)?(www\.)?', '' 
         }
-
-        # Remplacer les caractères non-alphanumériques (sauf les espaces, @, et apostrophes) par des underscores
         $validName = $fileName -replace '[^\p{L}\p{Nd}\s@''._-]', '_'
-        
-        # Supprimer les caractères de contrôle
         $validName = $validName -replace '[\x00-\x1F]', ''
-        
-        # Supprimer les espaces, points, underscores et tirets au début et à la fin
         $validName = $validName.Trim(' ._-')
-        
-        # Si le nom est vide ou ne contient que des caractères spéciaux, utiliser l'URL
         if ([string]::IsNullOrWhiteSpace($validName) -or $validName -match '^[\s._-]+$') {
             $validName = $url -replace '^(https?://)?(www\.)?', '' -replace '[^\p{L}\p{Nd}\s@''._-]', '_'
             $validName = $validName.Trim(' ._-')
         }
-        
-        # S'assurer que le nom n'est toujours pas vide
         if ([string]::IsNullOrWhiteSpace($validName)) {
             $validName = "Unnamed_Bookmark"
         }
-        
         return $validName
     }
-    
     $validName = Get-ValidFileName $name $url
-    
-    # Remplacer les underscores multiples par un seul underscore
     $validName = $validName -replace '_+', '_'
-    
-    # Limiter la longueur du nom à 40 caractères
     if ($validName.Length -gt 40) {
         $validName = $validName.Substring(0, 40).TrimEnd(' ._-')
     }
-    
     $filePath = Join-Path -Path $path -ChildPath "$validName.url"
-    
     try {
         $content | Out-File -FilePath $filePath -Encoding utf8 -Force -ErrorAction Stop
         Write-Host "Created/Overwritten URL file: $filePath"
@@ -391,31 +452,22 @@ URL=$url
     }
 }
 
-
-# Recursive function to process bookmarks and create folders/files
-function Process-Bookmarks($node, $currentPath, [ref]$currentBookmark, $progress) {
-    if ($node.children) {
-        foreach ($child in $node.children) {
-            if ($child.type -eq 'folder') {
-                $folderPath = Join-Path -Path $currentPath -ChildPath $child.name
-                if (-not (Test-Path $folderPath)) {
-                    New-Item -Path $folderPath -ItemType Directory | Out-Null
-                }
-                Process-Bookmarks $child $folderPath $currentBookmark $progress
-            } elseif ($child.type -eq 'url') {
-                Create-UrlFile $child.name $child.url $currentPath
-                $currentBookmark.Value++
-                $progress.Bar.Value = $currentBookmark.Value
-                $progress.Form.Refresh()
+function Process-SelectedBookmarks($nodes, $currentPath, [ref]$currentBookmark, $progress) {
+    foreach ($node in $nodes) {
+        if ($node.Type -eq "Bookmark") {
+            # C'est un marque-page
+            Create-UrlFile $node.Text $node.Tag $currentPath
+            $currentBookmark.Value++
+            $progress.Bar.Value = $currentBookmark.Value
+        } elseif ($node.Type -eq "Folder") {
+            # C'est un dossier
+            $folderPath = Join-Path -Path $currentPath -ChildPath $node.Text
+            if (-not (Test-Path $folderPath)) {
+                New-Item -Path $folderPath -ItemType Directory -Force | Out-Null
             }
+            Process-SelectedBookmarks $node.Children $folderPath $currentBookmark $progress
         }
-    } elseif ($node.type -eq 'url') {
-        Create-UrlFile $node.name $node.url $currentPath
-        $currentBookmark.Value++
-        $progress.Bar.Value = $currentBookmark.Value
-        $progress.Form.Refresh()
     }
 }
 
-# Show the form
 $form.ShowDialog()
