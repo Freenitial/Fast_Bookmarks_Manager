@@ -96,7 +96,7 @@ if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
             }
             version = 1
         }
-        $initial_bookmarks | ConvertTo-Json -Depth 10 | Set-Content -Path $bookmarks_file -Encoding UTF8
+        $initial_bookmarks | ConvertTo-Json -Depth 100 | Set-Content -Path $bookmarks_file -Encoding UTF8
     }
 
     # Load bookmarks JSON file
@@ -171,7 +171,7 @@ if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
 
     # Save updated bookmarks
     Update-ProgressBar 80
-    $bookmarks_data | ConvertTo-Json -Depth 10 | Set-Content -Path $bookmarks_file -Encoding UTF8
+    $bookmarks_data | ConvertTo-Json -Depth 100 | Set-Content -Path $bookmarks_file -Encoding UTF8
 
     # Restart Edge
     Update-ProgressBar 90
