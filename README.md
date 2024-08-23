@@ -35,8 +35,6 @@ Voici 3 manières de générer vos raccourcis .url :
 
 ------
 TODO : 
-- Restore depth (compress ?)
-- Restore destroy unicode of existing
+- Handle long paths
 - Choose profile to restore in
-- Backup selected count not reliable when confirming
-- Check backup with custom profiles
+- Backup selected count not reliable after view and confirming
