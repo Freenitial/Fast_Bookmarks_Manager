@@ -37,3 +37,4 @@ Voici 3 manières de générer vos raccourcis .url :
 TODO : 
 - Checkbox cut long names
 - Backup selected count not reliable after view and confirming
+- Handle duplication backup from multiple profiles
