@@ -14,6 +14,7 @@ Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 Add-Type -AssemblyName System.Web
 $global:SelectedBookmarks = @{}
+$global:ExportErrors = @()
 
 # Function to get Chrome profiles
 function Get-ChromeProfiles
@@ -181,16 +182,16 @@ function Show-BookmarksTable {
     # Create main form
     $form = New-Object System.Windows.Forms.Form
     $form.Text = "Bookmarks - $browser ($profile)"
-    $form.Size = New-Object System.Drawing.Size(575, 475)
+    $form.Size = New-Object System.Drawing.Size(800, 600)
     $form.StartPosition = "CenterScreen"
     $form.Font = New-Object System.Drawing.Font("Arial", 10)
 
     # Add OK button
     $okButton = New-Object System.Windows.Forms.Button
-    $okButton.Text = "CONFIRM  SELECTION"
+    $okButton.Text = "OK"
     $okButton.Font = New-Object System.Drawing.Font("Arial", 12, [System.Drawing.FontStyle]::Bold)
-    $okButton.Size = New-Object System.Drawing.Size(539, 40)
-    $okButton.Location = New-Object System.Drawing.Point(10, 5)
+    $okButton.Size = New-Object System.Drawing.Size(100, 40)
+    $okButton.Location = New-Object System.Drawing.Point(350, 10)
     $okButton.Add_Click({
         $selectedResult = Get-CheckedNodes $treeView.Nodes
         $selectedNodes = $selectedResult.Children
@@ -205,8 +206,8 @@ function Show-BookmarksTable {
 
     # Create TreeView to display bookmarks structure
     $treeView = New-Object System.Windows.Forms.TreeView
-    $treeView.Location = New-Object System.Drawing.Point(10, 50)
-    $treeView.Size = New-Object System.Drawing.Size(540, 375)
+    $treeView.Location = New-Object System.Drawing.Point(10, 60)
+    $treeView.Size = New-Object System.Drawing.Size(760, 490)
     $treeView.CheckBoxes = $true
 
     function Add-BookmarksToTreeNode {
@@ -255,11 +256,11 @@ function Get-CheckedNodes($nodes) {
     foreach ($node in $nodes) {
         if ($node.Checked) {
             if ($node.Nodes.Count -eq 0) {
-                # This is a bookmark
+                # C'est un marque-page
                 $checkedNodes += @{Text = $node.Text; Tag = $node.Tag; Type = "Bookmark"}
                 $bookmarkCount++
             } else {
-                # This is a folder
+                # C'est un dossier
                 $folderResult = Get-CheckedNodes $node.Nodes
                 if ($folderResult.Children.Count -gt 0) {
                     $checkedNodes += @{
@@ -392,9 +393,72 @@ function Export-Bookmarks($web_profiles) {
     }
 
     $progress.Form.Close()
-    [System.Windows.Forms.MessageBox]::Show("Bookmarks have been exported successfully.", "Export Complete", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+
+    if ($global:ExportErrors.Count -gt 0) {
+        Show-ErrorList
+    } else {
+        [System.Windows.Forms.MessageBox]::Show("Bookmarks have been exported successfully.", "Export Complete", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+    }
+
+    # Clear the error list for the next export
+    $global:ExportErrors = @()
 }
 
+function Show-ErrorList {
+    $errorForm = New-Object System.Windows.Forms.Form
+    $errorForm.Text = "Export Errors"
+    $errorForm.Size = New-Object System.Drawing.Size(700, 500)
+    $errorForm.StartPosition = "CenterScreen"
+    $errorForm.Font = New-Object System.Drawing.Font("Segoe UI", 9)
+
+    $label = New-Object System.Windows.Forms.Label
+    $label.Location = New-Object System.Drawing.Point(10, 10)
+    $label.Size = New-Object System.Drawing.Size(660, 40)
+    $label.Text = "The following items could not be exported due to long paths or other errors:"
+    $label.Font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+    $label.ForeColor = [System.Drawing.Color]::Red
+    $errorForm.Controls.Add($label)
+
+    $listView = New-Object System.Windows.Forms.ListView
+    $listView.Location = New-Object System.Drawing.Point(10, 50)
+    $listView.Size = New-Object System.Drawing.Size(660, 350)
+    $listView.View = [System.Windows.Forms.View]::Details
+    $listView.FullRowSelect = $true
+    $listView.GridLines = $true
+
+    $listView.Columns.Add("Type", 40) | Out-Null
+    $listView.Columns.Add("Path", 490) | Out-Null
+
+    foreach ($error in $global:ExportErrors) {
+        if ($error -match "^Failed to create (file|folder): (.+)$") {
+            $item = New-Object System.Windows.Forms.ListViewItem($matches[1])
+            $item.SubItems.Add($matches[2])
+            $listView.Items.Add($item) | Out-Null
+        }
+    }
+
+    $errorForm.Controls.Add($listView)
+
+    $okButton = New-Object System.Windows.Forms.Button
+    $okButton.Location = New-Object System.Drawing.Point(290, 410)
+    $okButton.Size = New-Object System.Drawing.Size(100, 30)
+    $okButton.Text = "OK"
+    $okButton.Add_Click({ $errorForm.Close() })
+    $errorForm.Controls.Add($okButton)
+
+    $copyButton = New-Object System.Windows.Forms.Button
+    $copyButton.Location = New-Object System.Drawing.Point(10, 410)
+    $copyButton.Size = New-Object System.Drawing.Size(100, 30)
+    $copyButton.Text = "Copy to Clipboard"
+    $copyButton.Add_Click({
+        $errorText = $global:ExportErrors -join "`r`n"
+        [System.Windows.Forms.Clipboard]::SetText($errorText)
+        [System.Windows.Forms.MessageBox]::Show("Errors copied to clipboard.", "Copy Complete", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+    })
+    $errorForm.Controls.Add($copyButton)
+
+    $errorForm.ShowDialog()
+}
 
 function Count-Bookmarks-Recursive($nodes) {
     $count = 0
@@ -410,7 +474,6 @@ function Count-Bookmarks-Recursive($nodes) {
 
 
 
-# Function to create .url file
 function Create-UrlFile($name, $url, $path) {
     if ($url -match '^(chrome|edge)://') {
         Write-Host "Skipping browser-specific URL: $url"
@@ -439,35 +502,49 @@ URL=$url
     }
     $validName = Get-ValidFileName $name $url
     $validName = $validName -replace '_+', '_'
-    if ($validName.Length -gt 40) {
-        $validName = $validName.Substring(0, 40).TrimEnd(' ._-')
+    if ($validName.Length -gt 60) {
+        $validName = $validName.Substring(0, 60).TrimEnd(' ._-')
     }
+    
     $filePath = Join-Path -Path $path -ChildPath "$validName.url"
+    
     try {
-        $content | Out-File -FilePath $filePath -Encoding utf8 -Force -ErrorAction Stop
+        $content | Out-File -LiteralPath $filePath -Encoding utf8 -Force -ErrorAction Stop
         Write-Host "Created/Overwritten URL file: $filePath"
     }
     catch {
         Write-Host "Failed to create/overwrite URL file: $filePath. Error: $($_.Exception.Message)"
+        $global:ExportErrors += "Failed to create file: $filePath"
     }
 }
 
 function Process-SelectedBookmarks($nodes, $currentPath, [ref]$currentBookmark, $progress) {
     foreach ($node in $nodes) {
         if ($node.Type -eq "Bookmark") {
-            # C'est un marque-page
             Create-UrlFile $node.Text $node.Tag $currentPath
             $currentBookmark.Value++
             $progress.Bar.Value = $currentBookmark.Value
         } elseif ($node.Type -eq "Folder") {
-            # C'est un dossier
-            $folderPath = Join-Path -Path $currentPath -ChildPath $node.Text
-            if (-not (Test-Path $folderPath)) {
-                New-Item -Path $folderPath -ItemType Directory -Force | Out-Null
+            $folderName = $node.Text -replace '[^\p{L}\p{Nd}\s@''._-]', '_'
+            $folderName = $folderName.Trim(' ._-')
+            if ($folderName.Length -gt 60) {
+                $folderName = $folderName.Substring(0, 60).TrimEnd(' ._-')
             }
-            Process-SelectedBookmarks $node.Children $folderPath $currentBookmark $progress
+            $folderPath = Join-Path -Path $currentPath -ChildPath $folderName
+            
+            try {
+                if (-not (Test-Path -LiteralPath $folderPath)) {
+                    New-Item -Path $folderPath -ItemType Directory -Force -ErrorAction Stop | Out-Null
+                }
+                Process-SelectedBookmarks $node.Children $folderPath $currentBookmark $progress
+            }
+            catch {
+                Write-Host "Failed to create folder: $folderPath. Error: $($_.Exception.Message)"
+                $global:ExportErrors += "Failed to create folder: $folderPath"
+            }
         }
     }
 }
 
+# Show the form
 $form.ShowDialog()
