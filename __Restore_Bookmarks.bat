@@ -57,41 +57,10 @@ if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
     Update-ProgressBar 30
     if (-not (Test-Path $bookmarks_file)) {
         $initial_bookmarks = @{
-            checksum = ""
             roots = @{
-                bookmark_bar = @{
-                    children = @()
-                    date_added = (Get-ChromeTimestamp).ToString()
-                    date_last_used = "0"
-                    date_modified = (Get-ChromeTimestamp).ToString()
-                    guid = "new-guid-{0}" -f [guid]::NewGuid().ToString().Substring(0, 8)
-                    id = "1"
-                    name = "Bookmarks Bar"
-                    source = "unknown"
-                    type = "folder"
-                }
-                other = @{
-                    children = @()
-                    date_added = (Get-ChromeTimestamp).ToString()
-                    date_last_used = "0"
-                    date_modified = "0"
-                    guid = "new-guid-{0}" -f [guid]::NewGuid().ToString().Substring(0, 8)
-                    id = "2"
-                    name = "Other Bookmarks"
-                    source = "unknown"
-                    type = "folder"
-                }
-                synced = @{
-                    children = @()
-                    date_added = (Get-ChromeTimestamp).ToString()
-                    date_last_used = "0"
-                    date_modified = "0"
-                    guid = "new-guid-{0}" -f [guid]::NewGuid().ToString().Substring(0, 8)
-                    id = "3"
-                    name = "Mobile Bookmarks"
-                    source = "unknown"
-                    type = "folder"
-                }
+                bookmark_bar = @{ children = @(); type = "folder" }
+                other = @{ children = @(); type = "folder" }
+                synced = @{ children = @(); type = "folder" }
             }
             version = 1
         }
@@ -100,20 +69,7 @@ if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
 
     # Load bookmarks JSON file
     Update-ProgressBar 40
-    $bookmarks_data = Get-Content -Path $bookmarks_file -Raw | ConvertFrom-Json
-
-    # Extract all existing URLs in bookmarks
-    $existing_urls = @{}
-    function Extract-ExistingUrls($node) {
-        if ($node.type -eq 'url') {
-            $existing_urls[$node.url] = $true
-        } elseif ($node.type -eq 'folder' -and $node.children) {
-            foreach ($child in $node.children) {
-                Extract-ExistingUrls $child
-            }
-        }
-    }
-    Extract-ExistingUrls $bookmarks_data.roots.bookmark_bar
+    $bookmarks_data = Get-Content -Path $bookmarks_file -Raw -Encoding UTF8 | ConvertFrom-Json
 
     # Recursive function to add bookmarks and folders
     Update-ProgressBar 50
@@ -124,7 +80,7 @@ if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
                 $folderName = $_.Name
                 $existingFolder = $parentNode.children | Where-Object { $_.name -eq $folderName -and $_.type -eq 'folder' }
                 if (-not $existingFolder) {
-                    $newFolder = @{
+                    $newFolder = [PSCustomObject]@{
                         date_added = (Get-ChromeTimestamp).ToString()
                         date_last_used = "0"
                         date_modified = (Get-ChromeTimestamp).ToString()
@@ -143,22 +99,24 @@ if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
                 # It's a .url file
                 $content = Get-Content -Path $_.FullName -Encoding UTF8
                 $url = ($content | Where-Object { $_ -like 'URL=*' }).Substring(4).Trim()
+                $name = [System.IO.Path]::GetFileNameWithoutExtension($_.Name)
                 
-                if (-not $existing_urls.ContainsKey($url)) {
+                # Check if URL already exists in the current folder
+                $existingBookmark = $parentNode.children | Where-Object { $_.url -eq $url -and $_.type -eq 'url' }
+                if (-not $existingBookmark) {
                     $timestamp = Get-ChromeTimestamp
-                    $new_favorite = @{
+                    $new_favorite = [PSCustomObject]@{
                         date_added = $timestamp.ToString()
                         date_last_used = "0"
                         guid = "new-guid-{0}" -f [guid]::NewGuid().ToString().Substring(0, 8)
                         id = $timestamp.ToString()
-                        name = [System.IO.Path]::GetFileNameWithoutExtension($_.Name)
+                        name = $name
                         show_icon = $false
                         source = "user_add"
                         type = "url"
                         url = $url
                     }
                     $parentNode.children += $new_favorite
-                    $existing_urls[$url] = $true
                 }
             }
         }
@@ -170,7 +128,11 @@ if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
 
     # Save updated bookmarks
     Update-ProgressBar 80
-    $bookmarks_data | ConvertTo-Json -Depth 100 | Set-Content -Path $bookmarks_file -Encoding UTF8
+    $compressedJson = $bookmarks_data | ConvertTo-Json -Depth 100 -Compress
+    [System.IO.File]::WriteAllText($bookmarks_file, $compressedJson, [System.Text.Encoding]::UTF8)
+
+    # Close progress form
+    $form.Close()
 
     # Restart Edge
     Update-ProgressBar 90
@@ -179,6 +141,6 @@ if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
         Start-Sleep -Milliseconds 100
     }
 
-    # Close progress form
-    $form.Close()
+    # Final update
+    Update-ProgressBar 100
 }
