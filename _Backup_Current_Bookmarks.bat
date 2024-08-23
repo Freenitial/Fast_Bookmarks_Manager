@@ -500,6 +500,17 @@ URL=$url
         }
         return $validName
     }
+
+    # Check if URL already exists in the current path
+    $existingFiles = Get-ChildItem -Path $path -Filter "*.url"
+    foreach ($file in $existingFiles) {
+        $existingContent = Get-Content -LiteralPath $file.FullName -Raw
+        if ($existingContent -match "URL=$([regex]::Escape($url))") {
+            Write-Host "Skipping duplicate URL in the same path: $url"
+            return
+        }
+    }
+
     $validName = Get-ValidFileName $name $url
     $validName = $validName -replace '_+', '_'
     if ($validName.Length -gt 60) {
@@ -507,13 +518,19 @@ URL=$url
     }
     
     $filePath = Join-Path -Path $path -ChildPath "$validName.url"
+    $counter = 1
+
+    while (Test-Path -LiteralPath $filePath) {
+        $filePath = Join-Path -Path $path -ChildPath "$validName ($counter).url"
+        $counter++
+    }
     
     try {
         $content | Out-File -LiteralPath $filePath -Encoding utf8 -Force -ErrorAction Stop
-        Write-Host "Created/Overwritten URL file: $filePath"
+        Write-Host "Created URL file: $filePath"
     }
     catch {
-        Write-Host "Failed to create/overwrite URL file: $filePath. Error: $($_.Exception.Message)"
+        Write-Host "Failed to create URL file: $filePath. Error: $($_.Exception.Message)"
         $global:ExportErrors += "Failed to create file: $filePath"
     }
 }
