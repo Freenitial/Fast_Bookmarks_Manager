@@ -6,6 +6,7 @@
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
+Add-Type -AssemblyName System.Web
 
 # Function to get Chrome profiles
 function Get-ChromeProfiles {
@@ -150,7 +151,7 @@ function Show-BookmarksTable {
         param ($node, $parentTreeNode)
 
         if ($node.type -eq 'url') {
-            $newNode = $parentTreeNode.Nodes.Add($node.name)
+            $newNode = $parentTreeNode.Nodes.Add([System.Web.HttpUtility]::HtmlDecode($node.name))
             $newNode.Tag = $node.url
         }
 
