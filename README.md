@@ -35,6 +35,5 @@ Voici 3 manières de générer vos raccourcis .url :
 
 ------
 TODO : 
-- Handle long paths
-- Choose profile to restore in
+- Checkbox cut long names
 - Backup selected count not reliable after view and confirming
