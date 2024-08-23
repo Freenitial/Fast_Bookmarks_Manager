@@ -20,6 +20,13 @@ $result = [System.Windows.Forms.MessageBox]::Show(
     [System.Windows.Forms.MessageBoxButtons]::OKCancel
 )
 
+function Get-ShortPath($longPath) {
+    $obj = New-Object -ComObject Shell.Application
+    $folder = $obj.Namespace([System.IO.Path]::GetDirectoryName($longPath))
+    $file = $folder.ParseName([System.IO.Path]::GetFileName($longPath))
+    return $file.Path
+}
+
 if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
     # Create and show progress form
     $form = New-Object System.Windows.Forms.Form
@@ -74,7 +81,8 @@ if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
     # Recursive function to add bookmarks and folders
     Update-ProgressBar 50
     function Add-BookmarksRecursively($parentNode, $currentPath) {
-        Get-ChildItem -Path $currentPath | ForEach-Object {
+        Get-ChildItem -Path $currentPath -ErrorAction SilentlyContinue | ForEach-Object {
+            $shortPath = Get-ShortPath $_.FullName
             if ($_.PSIsContainer) {
                 # It's a folder
                 $folderName = $_.Name
@@ -94,29 +102,31 @@ if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
                     $parentNode.children += $newFolder
                     $existingFolder = $newFolder
                 }
-                Add-BookmarksRecursively $existingFolder $_.FullName
+                Add-BookmarksRecursively $existingFolder $shortPath
             } elseif ($_.Extension -eq '.url') {
                 # It's a .url file
-                $content = Get-Content -Path $_.FullName -Encoding UTF8
-                $url = ($content | Where-Object { $_ -like 'URL=*' }).Substring(4).Trim()
-                $name = [System.IO.Path]::GetFileNameWithoutExtension($_.Name)
-                
-                # Check if URL already exists in the current folder
-                $existingBookmark = $parentNode.children | Where-Object { $_.url -eq $url -and $_.type -eq 'url' }
-                if (-not $existingBookmark) {
-                    $timestamp = Get-ChromeTimestamp
-                    $new_favorite = [PSCustomObject]@{
-                        date_added = $timestamp.ToString()
-                        date_last_used = "0"
-                        guid = "new-guid-{0}" -f [guid]::NewGuid().ToString().Substring(0, 8)
-                        id = $timestamp.ToString()
-                        name = $name
-                        show_icon = $false
-                        source = "user_add"
-                        type = "url"
-                        url = $url
+                $content = Get-Content -Path $shortPath -Encoding UTF8 -ErrorAction SilentlyContinue
+                if ($content) {
+                    $url = ($content | Where-Object { $_ -like 'URL=*' }).Substring(4).Trim()
+                    $name = [System.IO.Path]::GetFileNameWithoutExtension($_.Name)
+                    
+                    # Check if URL already exists in the current folder
+                    $existingBookmark = $parentNode.children | Where-Object { $_.url -eq $url -and $_.type -eq 'url' }
+                    if (-not $existingBookmark) {
+                        $timestamp = Get-ChromeTimestamp
+                        $new_favorite = [PSCustomObject]@{
+                            date_added = $timestamp.ToString()
+                            date_last_used = "0"
+                            guid = "new-guid-{0}" -f [guid]::NewGuid().ToString().Substring(0, 8)
+                            id = $timestamp.ToString()
+                            name = $name
+                            show_icon = $false
+                            source = "user_add"
+                            type = "url"
+                            url = $url
+                        }
+                        $parentNode.children += $new_favorite
                     }
-                    $parentNode.children += $new_favorite
                 }
             }
         }
