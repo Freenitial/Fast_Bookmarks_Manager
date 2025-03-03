@@ -51,7 +51,7 @@
 ### Optional Arguments 🔧
    
 1) `-autorestore`
-   - Enables automatic restoration mode without user prompts, for each default profile
+   - Enables automatic restoration mode without user prompts, for each default profile of each browser
 
 2) `-source "Full\Filepath\to\sourceFolder"`
    - Full path to the folder containing .url files for restoration. Default : Script folder
