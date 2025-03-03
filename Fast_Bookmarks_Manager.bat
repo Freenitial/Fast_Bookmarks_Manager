@@ -30,12 +30,12 @@
     echo    DESCRIPTION:
     echo       -----------
     echo       Fast Bookmarks Manager is a PowerShell tool with a graphical interface
-    echo       for exporting and importing bookmarks from Chrome and Edge profiles.
+    echo       for exporting and importing bookmarks-bar from Chrome and Edge profiles.
     echo.
     echo       Key features:
     echo         - Export bookmarks-bar as .url files and folder structure organized by browser and profile
     echo         - Import bookmarks from exported .url files
-    echo         - Manage target folder for backup and source folder for restoration
+    echo         - Manage target folder for backup, and source folder for restoration
     echo         - Intuitive tree view for bookmarks selection
     echo         - Auto-restore for each default profile of each browser with the -autorestore parameter
     echo         - With Auto-restore you can add argument -source "C:\Folder_containing_url_files\" if not in script dir
