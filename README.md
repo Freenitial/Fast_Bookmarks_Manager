@@ -66,7 +66,7 @@
 
 _Requirement : Windows 10 build 1607 +_
 
-To launch Fast Bookmarks Manager normally: just open .bat file  
+To launch Fast Bookmarks Manager normally: **Just open .bat file**
 
 To launch with auto-restore and specify source and logfile paths:  
 ```
