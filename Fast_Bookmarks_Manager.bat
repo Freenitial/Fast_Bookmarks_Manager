@@ -8,11 +8,7 @@
     if /i "%~1"=="-help"    goto :help
     if /i "%~1"=="--help"   goto :help
 
-    set "WindowStyle=Normal"
-    for %%A in (%*) do if /I "%%A"=="-showdebug" set "WindowStyle=Normal"
-
-    copy /y "%~f0" "%TEMP%\%~n0.ps1" >NUL && powershell -Nologo -NoProfile -ExecutionPolicy Bypass -WindowStyle %WindowStyle% -File "%TEMP%\%~n0.ps1" %*
-
+    copy /y "%~f0" "%TEMP%\%~n0.ps1" >NUL && powershell -Nologo -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "%TEMP%\%~n0.ps1" %*
     for %%A in (%*) do if /I "%%A"=="-autorestore" exit
     exit /b
 
@@ -1282,7 +1278,6 @@ $restoreChromeGroup.Location = New-Object System.Drawing.Point(20,50)
 $restoreChromeGroup.Size = New-Object System.Drawing.Size(260,380)
 $restoreChromeGroup.Text = "Chrome Profiles"
 $tabRestore.Controls.Add($restoreChromeGroup)
-
 $restoreEdgeGroup = New-Object System.Windows.Forms.GroupBox
 $restoreEdgeGroup.Location = New-Object System.Drawing.Point(300,50)
 $restoreEdgeGroup.Size = New-Object System.Drawing.Size(260,380)
