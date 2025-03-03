@@ -70,7 +70,7 @@ To launch Fast Bookmarks Manager normally: just open .bat file
 
 To launch with auto-restore and specify source and logfile paths:  
 ```
-tart "" /d "SCRIPT_DIR" Fast_Bookmarks_Manager -autorestore "C:\Path\To\Source" "C:\Path\To\Logfile.log"
+start "" /d "SCRIPT_DIR" Fast_Bookmarks_Manager -autorestore "C:\Source_Dir" "C:\Logfile.log"
 ```  
 
 Multi-line example:
