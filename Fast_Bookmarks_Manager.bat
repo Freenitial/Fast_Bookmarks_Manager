@@ -13,7 +13,7 @@
     exit /b
 
     :help
-    mode con: cols=128 lines=60
+    mode con: cols=120 lines=50
     echo.
     echo.
     echo    =============================================================================
@@ -55,9 +55,9 @@
     echo          start "" /d "SCRIPT_DIR" Fast_Bookmarks_Manager -autorestore "C:\Path\To\Source" "C:\Path\To\Logfile.log"
     echo.
     echo       Multi-line example:
-    echo          start "" /d "SCRIPT_DIR" Fast_Bookmarks_Manager ^
-    echo                                   -autorestore ^
-    echo                                   -source "C:\Path\To\Source" ^
+    echo          start "" /d "SCRIPT_DIR" Fast_Bookmarks_Manager ^^
+    echo                                   -autorestore ^^
+    echo                                   -source "C:\Path\To\Source" ^^
     echo                                   -logfile "C:\Path\To\Logfile.log"
     echo.
     echo.
