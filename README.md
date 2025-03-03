@@ -1,6 +1,6 @@
 # **Fast Bookmarks Manager**
 
-**Graphical PowerShell tool for browser bookmarks-bar export and import**
+**Graphical/Cmd tool for Edge/Chrome bookmarks-bar export and import**
 
 --------------------
 
