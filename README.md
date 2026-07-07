@@ -1,17 +1,16 @@
 # **Fast Bookmarks Manager**
 
-**Graphical/Cmd tool for Edge/Chrome bookmarks-bar export and import**
+**Graphical/Cmd tool for Chrome / Edge / Firefox / OperaGX bookmarks-bar export and import**
 
 --------------------
 
 ### Features ✨ 
 
-- 🔄 Export & import bookmarks-bar between browsers 
-- 🌐 Full support for Chrome and Edge profiles
+- 🔄 Export & import bookmarks-**bar** between browsers 
+- 🌐 Support for Chrome / Edge / Firefox / OperaGX profiles
 - 📂 Preserve folders structure during export/import
-- 🗃️ Organized backup as .url files
-- 🔍 Tree view for selective bookmark management
-- ⚙️ Customizable target/source folders
+- 🗃️ Organized backup as .url files/folders structure, or HTML file
+- 🔍 Treeview for selective bookmark management
 - 🚀 Auto-restore functionality for scripting
 - 📊 Profile-specific bookmark counting
 - 📝 Logs
@@ -19,12 +18,12 @@
 --------------------
 
 ### Tab 1: Backup 🗃️
-- Select Chrome and Edge profiles of bookmarks bar to export
+- Select Chrome / Edge / Firefox / OperaGX profiles of bookmarks bar to export
 - Tree view with checkboxes for selective backup
 - Export url files, preserving folders structure
 - Ignores browser-specific URLs (chrome://, edge://)
 
-![image](https://github.com/user-attachments/assets/e8ce5bc7-a53c-4e2b-afdc-0425a02fb8c9)
+<img width="584" height="542" alt="Capture d&#39;écran 2026-07-07 185509" src="https://github.com/user-attachments/assets/fd5746c2-6c9b-42f3-a306-7a301a804c17" />
 
 --------------------
 
@@ -36,25 +35,18 @@
 - Import counter to track selected URLs
 - Compatible with any valid .url file
 
-![image](https://github.com/user-attachments/assets/76acd459-5d0b-4af0-943e-6ab7470991a3)
-
---------------------
-
-### Tab 3: Settings ⚙️
-- Configure backup target folder
-- Set restore source folder
-
-![image](https://github.com/user-attachments/assets/6ac6cafb-f249-4728-abe5-0f4ccd5d5224)
+<img width="584" height="542" alt="Capture d&#39;écran 2026-07-07 185853" src="https://github.com/user-attachments/assets/4293d64a-1f63-434c-973a-9e11297a2e29" />
 
 --------------------
 
 ### Optional Arguments 🔧
    
 1) `-autorestore`
-   - Auto restore all urls founds from source folder to each default profile of each browser
+   - Auto restore all urls founds from source folder or HTML file to each default profile of each browser
 
 2) `-source "Full\Filepath\to\sourceFolder"`
    - Full path to the folder containing .url files for restoration. Default : Script folder
+   - When using -source argument, not followed by HTML file or folder path, HTML file in script dir will be prioritized
 
 3) `-logfile "Full\Filepath\to\logfile.log"`
    - Full path for the log file. Default : %temp%\Fast_Bookmarks_Manager.log
@@ -71,6 +63,7 @@ To launch Fast Bookmarks Manager normally: **Just open .bat file**
 To launch with auto-restore and specify source and logfile paths:  
 ```
 start "" /d "SCRIPT_DIR" Fast_Bookmarks_Manager -autorestore "C:\Source_Dir" "C:\Logfile.log"
+start "" /d "SCRIPT_DIR" Fast_Bookmarks_Manager -autorestore "C:\Source_File.html" "C:\Logfile.log"
 ```  
 
 Multi-line example:
